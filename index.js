@@ -1,6 +1,7 @@
 import express from "express";
 
 const app = express();
+app.use(express.json());
 const PORT = 3000;
 
 const expenses = [
@@ -18,6 +19,20 @@ app.get("/ping", (req, res) => {
 
 app.get("/expenses", (req, res) => {
   res.json(expenses);
+});
+
+app.post("/expenses", (req, res) => {
+  const { title, amount, category } = req.body;
+
+  const newExpense = {
+    id: expenses.length + 1,
+    title,
+    amount,
+    category,
+  };
+
+  expenses.push(newExpense);
+  res.status(201).json(newExpense);
 });
 
 app.listen(PORT, () => {
