@@ -9,6 +9,7 @@ const expenses = [
   { id: 2, title: "Метро", amount: 20, category: "transport" },
 ];
 
+
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
 });
@@ -30,6 +31,18 @@ app.get("/expenses/:id", (req, res) => {
   }
 
   res.json(expense);
+});
+
+app.delete("/expenses/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const index = expenses.findIndex((e) => e.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ message: "Expense not found" });
+  }
+
+  expenses.splice(index, 1);
+  res.status(204).send();
 });
 
 app.post("/expenses", (req, res) => {
