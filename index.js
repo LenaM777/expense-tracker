@@ -9,6 +9,7 @@ const expenses = [
   { id: 2, title: "Метро", amount: 20, category: "transport" },
 ];
 
+let nextId = 3;
 
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
@@ -49,7 +50,7 @@ app.post("/expenses", (req, res) => {
   const { title, amount, category } = req.body;
 
   const newExpense = {
-    id: expenses.length + 1,
+    id: nextId++,
     title,
     amount,
     category,
