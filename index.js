@@ -21,6 +21,17 @@ app.get("/expenses", (req, res) => {
   res.json(expenses);
 });
 
+app.get("/expenses/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const expense = expenses.find((e) => e.id === id);
+
+  if (!expense) {
+    return res.status(404).json({ message: "Expense not found" });
+  }
+
+  res.json(expense);
+});
+
 app.post("/expenses", (req, res) => {
   const { title, amount, category } = req.body;
 
