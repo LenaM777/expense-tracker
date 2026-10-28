@@ -34,6 +34,23 @@ app.get("/expenses/:id", (req, res) => {
   res.json(expense);
 });
 
+app.put("/expenses/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const expense = expenses.find((e) => e.id === id);
+
+  if (!expense) {
+    return res.status(404).json({ message: "Expense not found" });
+  }
+
+  const { title, amount, category } = req.body;
+
+  expense.title = title;
+  expense.amount = amount;
+  expense.category = category;
+
+  res.json(expense);
+});
+
 app.delete("/expenses/:id", (req, res) => {
   const id = Number(req.params.id);
   const index = expenses.findIndex((e) => e.id === id);
