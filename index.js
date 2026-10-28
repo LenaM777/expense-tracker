@@ -11,6 +11,22 @@ const expenses = [
 
 let nextId = 3;
 
+function validateExpense(body = {}) {
+  const { title, amount, category } = body;
+
+  if (typeof title !== "string" || title.trim() === "") {
+    return "Title is required";
+  }
+  if (typeof amount !== "number" || amount <= 0) {
+    return "Amount must be a positive number";
+  }
+  if (typeof category !== "string" || category.trim() === "") {
+    return "Category is required";
+  }
+
+  return null;
+}
+
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
 });
@@ -42,6 +58,11 @@ app.put("/expenses/:id", (req, res) => {
     return res.status(404).json({ message: "Expense not found" });
   }
 
+  const error = validateExpense(req.body);
+if (error) {
+  return res.status(400).json({ message: error });
+}
+
   const { title, amount, category } = req.body;
 
   expense.title = title;
@@ -64,6 +85,10 @@ app.delete("/expenses/:id", (req, res) => {
 });
 
 app.post("/expenses", (req, res) => {
+  const error = validateExpense(req.body);
+if (error) {
+  return res.status(400).json({ message: error });
+}
   const { title, amount, category } = req.body;
 
   const newExpense = {
