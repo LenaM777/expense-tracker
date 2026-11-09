@@ -28,6 +28,12 @@ function validateExpense(body: ExpenseInput = {}): string | null {
   return null;
 }
 
+function formatExpense<T extends { amount: { toNumber(): number } }>(
+  expense: T
+) {
+  return { ...expense, amount: expense.amount.toNumber() };
+}
+
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
 });
@@ -38,7 +44,7 @@ app.get("/ping", (req, res) => {
 
 app.get("/expenses", async (req, res) => {
   const expenses = await prisma.expense.findMany({ orderBy: { id: "asc" } });
-  res.json(expenses);
+  res.json(expenses.map(formatExpense));
 });
 
 app.get("/expenses/:id", async (req, res) => {
@@ -49,7 +55,7 @@ app.get("/expenses/:id", async (req, res) => {
     return res.status(404).json({ message: "Expense not found" });
   }
 
-  res.json(expense);
+  res.json(formatExpense(expense));
 });
 
 app.post("/expenses", async (req, res) => {
@@ -63,7 +69,7 @@ app.post("/expenses", async (req, res) => {
     data: { title, amount, category },
   });
 
-  res.status(201).json(newExpense);
+  res.status(201).json(formatExpense(newExpense));
 });
 
 app.put("/expenses/:id", async (req, res) => {
@@ -85,7 +91,7 @@ app.put("/expenses/:id", async (req, res) => {
     data: { title, amount, category },
   });
 
-  res.json(updated);
+  res.json(formatExpense(updated));
 });
 
 app.delete("/expenses/:id", async (req, res) => {
