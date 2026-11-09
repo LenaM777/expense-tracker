@@ -12,12 +12,24 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  expenses     Expense[]
+
+  @@map("users")
+}
+
 model Expense {
   id        Int      @id @default(autoincrement())
   title     String
   amount    Decimal  @db.Decimal(10, 2)
   category  String
   createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("expenses")
 }
