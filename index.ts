@@ -1,15 +1,10 @@
 import express from "express";
+import { prisma } from "./lib/prisma";
 
 const app = express();
-app.use(express.json());
 const PORT = 3000;
 
-const expenses = [
-  { id: 1, title: "Кава", amount: 85, category: "food" },
-  { id: 2, title: "Метро", amount: 20, category: "transport" },
-];
-
-let nextId = 3;
+app.use(express.json());
 
 type ExpenseInput = {
   title?: unknown;
@@ -41,13 +36,14 @@ app.get("/ping", (req, res) => {
   res.json({ message: "pong" });
 });
 
-app.get("/expenses", (req, res) => {
+app.get("/expenses", async (req, res) => {
+  const expenses = await prisma.expense.findMany({ orderBy: { id: "asc" } });
   res.json(expenses);
 });
 
-app.get("/expenses/:id", (req, res) => {
+app.get("/expenses/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const expense = expenses.find((e) => e.id === id);
+  const expense = await prisma.expense.findUnique({ where: { id } });
 
   if (!expense) {
     return res.status(404).json({ message: "Expense not found" });
@@ -56,56 +52,52 @@ app.get("/expenses/:id", (req, res) => {
   res.json(expense);
 });
 
-app.put("/expenses/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const expense = expenses.find((e) => e.id === id);
-
-  if (!expense) {
-    return res.status(404).json({ message: "Expense not found" });
+app.post("/expenses", async (req, res) => {
+  const error = validateExpense(req.body);
+  if (error) {
+    return res.status(400).json({ message: error });
   }
 
-  const error = validateExpense(req.body);
-if (error) {
-  return res.status(400).json({ message: error });
-}
-
   const { title, amount, category } = req.body;
+  const newExpense = await prisma.expense.create({
+    data: { title, amount, category },
+  });
 
-  expense.title = title;
-  expense.amount = amount;
-  expense.category = category;
-
-  res.json(expense);
-});
-
-app.delete("/expenses/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const index = expenses.findIndex((e) => e.id === id);
-
-  if (index === -1) {
-    return res.status(404).json({ message: "Expense not found" });
-  }
-
-  expenses.splice(index, 1);
-  res.status(204).send();
-});
-
-app.post("/expenses", (req, res) => {
-  const error = validateExpense(req.body);
-if (error) {
-  return res.status(400).json({ message: error });
-}
-  const { title, amount, category } = req.body;
-
-  const newExpense = {
-    id: nextId++,
-    title,
-    amount,
-    category,
-  };
-
-  expenses.push(newExpense);
   res.status(201).json(newExpense);
+});
+
+app.put("/expenses/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const expense = await prisma.expense.findUnique({ where: { id } });
+
+  if (!expense) {
+    return res.status(404).json({ message: "Expense not found" });
+  }
+
+  const error = validateExpense(req.body);
+  if (error) {
+    return res.status(400).json({ message: error });
+  }
+
+  const { title, amount, category } = req.body;
+  const updated = await prisma.expense.update({
+    where: { id },
+    data: { title, amount, category },
+  });
+
+  res.json(updated);
+});
+
+app.delete("/expenses/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const expense = await prisma.expense.findUnique({ where: { id } });
+
+  if (!expense) {
+    return res.status(404).json({ message: "Expense not found" });
+  }
+
+  await prisma.expense.delete({ where: { id } });
+  res.status(204).send();
 });
 
 app.listen(PORT, () => {
