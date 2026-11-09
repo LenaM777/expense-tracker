@@ -34,6 +34,11 @@ function formatExpense<T extends { amount: { toNumber(): number } }>(
   return { ...expense, amount: expense.amount.toNumber() };
 }
 
+function parseId(value: string): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
 });
@@ -48,7 +53,10 @@ app.get("/expenses", async (req, res) => {
 });
 
 app.get("/expenses/:id", async (req, res) => {
-  const id = Number(req.params.id);
+  const id = parseId(req.params.id);
+if (id === null) {
+  return res.status(400).json({ message: "Invalid id" });
+}
   const expense = await prisma.expense.findUnique({ where: { id } });
 
   if (!expense) {
@@ -73,7 +81,10 @@ app.post("/expenses", async (req, res) => {
 });
 
 app.put("/expenses/:id", async (req, res) => {
-  const id = Number(req.params.id);
+  const id = parseId(req.params.id);
+if (id === null) {
+  return res.status(400).json({ message: "Invalid id" });
+}
   const expense = await prisma.expense.findUnique({ where: { id } });
 
   if (!expense) {
@@ -95,7 +106,10 @@ app.put("/expenses/:id", async (req, res) => {
 });
 
 app.delete("/expenses/:id", async (req, res) => {
-  const id = Number(req.params.id);
+  const id = parseId(req.params.id);
+if (id === null) {
+  return res.status(400).json({ message: "Invalid id" });
+}
   const expense = await prisma.expense.findUnique({ where: { id } });
 
   if (!expense) {
