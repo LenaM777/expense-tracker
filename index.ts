@@ -11,7 +11,13 @@ const expenses = [
 
 let nextId = 3;
 
-function validateExpense(body = {}) {
+type ExpenseInput = {
+  title?: unknown;
+  amount?: unknown;
+  category?: unknown;
+};
+
+function validateExpense(body: ExpenseInput = {}): string | null {
   const { title, amount, category } = body;
 
   if (typeof title !== "string" || title.trim() === "") {
