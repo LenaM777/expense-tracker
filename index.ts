@@ -1,9 +1,16 @@
 import express from "express";
 import { prisma } from "./lib/prisma";
 import bcrypt from "bcryptjs";
+import "dotenv/config";
+import jwt from "jsonwebtoken";
 
 const app = express();
 const PORT = 3000;
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is not set in .env");
+}
 
 app.use(express.json());
 
@@ -150,6 +157,30 @@ app.post("/auth/register", async (req, res) => {
 
   res.status(201).json({ id: user.id, email: user.email });
 });
+
+
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body ?? {};
+
+  if (typeof email !== "string" || typeof password !== "string") {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+  });
+  const passwordOk = user
+    ? await bcrypt.compare(password, user.passwordHash)
+    : false;
+
+  if (!user || !passwordOk) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+  res.json({ token });
+});
+
 
 app.listen(PORT, () => {
   console.log(`Сервер запущено: http://localhost:${PORT}`);
