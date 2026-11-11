@@ -3,6 +3,8 @@ import { prisma } from "./lib/prisma";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
 import jwt from "jsonwebtoken";
+import type { NextFunction, Request, Response } from "express";
+
 
 const app = express();
 const PORT = 3000;
@@ -42,10 +44,38 @@ function formatExpense<T extends { amount: { toNumber(): number } }>(
   return { ...expense, amount: expense.amount.toNumber() };
 }
 
-function parseId(value: string): number | null {
+/*function parseId(value: string): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+} */
+
+  function parseId(value: unknown): number | null {
+  if (typeof value !== "string") return null;
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
+
+const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Authorization token is required" });
+  }
+
+  const token = header.slice("Bearer ".length);
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (typeof payload === "string" || typeof payload.userId !== "number") {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+    res.locals.userId = payload.userId;
+    next();
+  } catch {
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+
 
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
@@ -55,17 +85,22 @@ app.get("/ping", (req, res) => {
   res.json({ message: "pong" });
 });
 
-app.get("/expenses", async (req, res) => {
-  const expenses = await prisma.expense.findMany({ orderBy: { id: "asc" } });
+app.get("/expenses", requireAuth, async (req, res) => {
+  const expenses = await prisma.expense.findMany({ 
+    where: { userId: res.locals.userId },
+    orderBy: { id: "asc" },
+  });
   res.json(expenses.map(formatExpense));
 });
 
-app.get("/expenses/:id", async (req, res) => {
+app.get("/expenses/:id", requireAuth, async (req, res) => {
   const id = parseId(req.params.id);
 if (id === null) {
   return res.status(400).json({ message: "Invalid id" });
 }
-  const expense = await prisma.expense.findUnique({ where: { id } });
+  const expense = await prisma.expense.findFirst({
+  where: { id, userId: res.locals.userId },
+});
 
   if (!expense) {
     return res.status(404).json({ message: "Expense not found" });
@@ -74,7 +109,7 @@ if (id === null) {
   res.json(formatExpense(expense));
 });
 
-app.post("/expenses", async (req, res) => {
+app.post("/expenses", requireAuth, async (req, res) => {
   const error = validateExpense(req.body);
   if (error) {
     return res.status(400).json({ message: error });
@@ -82,18 +117,20 @@ app.post("/expenses", async (req, res) => {
 
   const { title, amount, category } = req.body;
   const newExpense = await prisma.expense.create({
-    data: { title, amount, category },
+    data: { title, amount, category, userId: res.locals.userId },
   });
 
   res.status(201).json(formatExpense(newExpense));
 });
 
-app.put("/expenses/:id", async (req, res) => {
+app.put("/expenses/:id", requireAuth, async (req, res) => {
   const id = parseId(req.params.id);
 if (id === null) {
   return res.status(400).json({ message: "Invalid id" });
 }
-  const expense = await prisma.expense.findUnique({ where: { id } });
+  const expense = await prisma.expense.findFirst({
+  where: { id, userId: res.locals.userId },
+});
 
   if (!expense) {
     return res.status(404).json({ message: "Expense not found" });
@@ -113,12 +150,14 @@ if (id === null) {
   res.json(formatExpense(updated));
 });
 
-app.delete("/expenses/:id", async (req, res) => {
+app.delete("/expenses/:id", requireAuth, async (req, res) => {
   const id = parseId(req.params.id);
 if (id === null) {
   return res.status(400).json({ message: "Invalid id" });
 }
-  const expense = await prisma.expense.findUnique({ where: { id } });
+  const expense = await prisma.expense.findFirst({
+  where: { id, userId: res.locals.userId },
+});
 
   if (!expense) {
     return res.status(404).json({ message: "Expense not found" });
