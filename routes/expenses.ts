@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
-import { parseId, validateExpense } from "../validation";
+import { parseId, parseMonth, validateExpense } from "../validation";
 
 const router = Router();
 
@@ -19,6 +19,37 @@ router.get("/", async (req, res) => {
     orderBy: { id: "asc" },
   });
   res.json(expenses.map(formatExpense));
+});
+
+router.get("/summary", async (req, res) => {
+  let range: ReturnType<typeof parseMonth> = null;
+
+  if (req.query.month !== undefined && req.query.month !== "") {
+    range = parseMonth(req.query.month);
+    if (!range) {
+      return res
+        .status(400)
+        .json({ message: "Invalid month, use format YYYY-MM" });
+    }
+  }
+
+  const groups = await prisma.expense.groupBy({
+    by: ["category"],
+    where: {
+      userId: res.locals.userId,
+      ...(range ? { createdAt: { gte: range.start, lt: range.end } } : {}),
+    },
+    _sum: { amount: true },
+    orderBy: { _sum: { amount: "desc" } },
+  });
+
+  const categories = groups.map((g) => ({
+    category: g.category,
+    total: g._sum.amount?.toNumber() ?? 0,
+  }));
+  const total = categories.reduce((sum, c) => sum + c.total, 0);
+
+  res.json({ total: Math.round(total * 100) / 100, categories });
 });
 
 router.get("/:id", async (req, res) => {
