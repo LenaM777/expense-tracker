@@ -7,12 +7,10 @@ export const requireAuth = (
   res: Response,
   next: NextFunction
 ) => {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Authorization token is required" });
+  const token = req.cookies?.token;
+  if (typeof token !== "string") {
+    return res.status(401).json({ message: "Authorization required" });
   }
-
-  const token = header.slice("Bearer ".length);
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);

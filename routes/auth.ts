@@ -3,8 +3,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { JWT_SECRET } from "../config";
+import { requireAuth } from "../middleware/requireAuth";
 
 const router = Router();
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+};
 
 router.post("/register", async (req, res) => {
   const { email, password } = req.body ?? {};
@@ -55,7 +62,28 @@ router.post("/login", async (req, res) => {
   }
 
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token });
+
+  res.cookie("token", token, {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  res.json({ id: user.id, email: user.email });
+});
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("token", cookieOptions);
+  res.status(204).send();
+});
+
+router.get("/me", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: res.locals.userId },
+  });
+  if (!user) {
+    return res.status(401).json({ message: "User not found" });
+  }
+
+  res.json({ id: user.id, email: user.email });
 });
 
 export default router;

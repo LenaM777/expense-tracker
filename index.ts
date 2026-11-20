@@ -1,14 +1,15 @@
 import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth";
 import expensesRouter from "./routes/expenses";
-import cors from "cors";
 
 const app = express();
 const PORT = 3000;
 
-app.use(cors({ origin: "http://localhost:5173" }));
-
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.send("Привіт! Сервер працює");
